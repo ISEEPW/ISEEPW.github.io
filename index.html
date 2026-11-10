@@ -28,7 +28,7 @@ body{background:var(--bg);color:var(--text);font:14px/1.3 "Segoe UI Variable","S
 .node .chev.open{transform:rotate(90deg)}
 .node span.t{overflow:hidden;text-overflow:ellipsis}
 .content{flex:1;background:var(--panel);border-radius:8px 0 0 0;border:1px solid var(--line);border-right:0;border-bottom:0;display:flex;flex-direction:column;min-width:0}
-.head,.row{display:grid;grid-template-columns:minmax(160px,1fr) 150px 110px 90px;align-items:center;padding:0 16px;gap:8px}
+.head,.row{display:grid;grid-template-columns:minmax(160px,1fr) 150px 110px 90px 40px;align-items:center;padding:0 16px;gap:8px}
 .head{height:34px;color:var(--dim);border-bottom:1px solid var(--line);font-size:13px}
 .head div{cursor:pointer;padding:6px 4px;border-radius:4px}.head div:hover{background:var(--hover)}
 .list{flex:1;overflow:auto;padding:4px 8px}
@@ -43,12 +43,34 @@ body{background:var(--bg);color:var(--text);font:14px/1.3 "Segoe UI Variable","S
 .menu div{padding:7px 12px;border-radius:4px;cursor:pointer}.menu div:hover{background:var(--hover)}
 .cfg{max-width:520px;margin:60px auto;padding:20px;background:var(--panel);border-radius:8px}
 svg{flex-shrink:0}
-@media(max-width:760px){.nav{display:none}.head,.row{grid-template-columns:1fr 80px}.head :nth-child(2),.head :nth-child(3),.row :nth-child(2),.row :nth-child(3){display:none}.search{width:120px}}
+.dl{width:32px;height:32px;border:0;border-radius:4px;background:none;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center}
+.dl:hover{background:#4a4a4a}.dl:focus-visible,.btn:focus-visible,.mbtn:focus-visible{outline:2px solid var(--accent)}
+.menubtn{display:none}
+.scrim{position:fixed;inset:0;background:#0008;z-index:19;display:none}.scrim.show{display:block}
+.modal{position:fixed;inset:0;z-index:30;background:#1c1c1c;display:none;flex-direction:column}.modal.show{display:flex}
+.mhead{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
+.mname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.mbtn{background:var(--hover);color:var(--text);border:0;border-radius:4px;padding:7px 12px;font:inherit;cursor:pointer;text-decoration:none;white-space:nowrap}
+.mbtn:hover{background:#4a4a4a}
+.mframe{flex:1;border:0;width:100%;background:#fff}
+.mload{position:absolute;left:0;right:0;top:50px;bottom:0;display:flex;align-items:center;justify-content:center;color:var(--dim);pointer-events:none}
+body{touch-action:manipulation}
+@media(max-width:760px){
+.menubtn{display:block}
+.nav{position:fixed;left:0;top:0;bottom:0;z-index:20;width:82%;max-width:320px;background:var(--panel);transform:translateX(-100%);transition:transform .18s;padding-top:12px;box-shadow:0 0 30px #000a}
+.nav.show{transform:none}
+.title span{display:none}
+.head,.row{grid-template-columns:1fr 70px 40px}
+.head>:nth-child(2),.head>:nth-child(3),.row>:nth-child(2),.row>:nth-child(3){display:none}
+.search{width:110px}
+.mbtn.hide-m{display:none}
+}
 </style>
 </head>
 <body>
 <div class="title"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#f7c948" d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2z"/></svg><b id="ttl">Mibombo</b><span style="color:var(--dim)">Hosting plików Informatyki Stosowanej</span></div>
 <div class="bar">
+  <button class="btn menubtn" id="menubtn" title="Przedmioty">☰</button>
   <button class="btn" id="back" title="Wstecz" disabled>←</button>
   <button class="btn" id="up" title="W górę" disabled>↑</button>
   <div class="crumbs" id="crumbs"></div>
@@ -57,20 +79,24 @@ svg{flex-shrink:0}
 <div class="main">
   <div class="nav" id="nav"></div>
   <div class="content">
-    <div class="head"><div data-k="name">Nazwa</div><div data-k="date">Data modyfikacji</div><div data-k="type">Typ</div><div data-k="size">Rozmiar</div></div>
+    <div class="head"><div data-k="name">Nazwa</div><div data-k="date">Data modyfikacji</div><div data-k="type">Typ</div><div data-k="size">Rozmiar</div><div></div></div>
     <div class="list" id="list"></div>
     <div class="status" id="status"></div>
   </div>
 </div>
+<div class="scrim" id="scrim"></div>
+<div class="modal" id="modal"><div class="mhead"><button class="mbtn" id="mclose" title="Zamknij">✕</button><span class="mname" id="mname"></span><button class="mbtn" id="mdl">Pobierz</button><a class="mbtn hide-m" id="mopen" target="_blank" rel="noopener">Otwórz w Dysku</a></div><div class="mload" id="mload">Ładowanie podglądu…</div><iframe class="mframe" id="frame" title="Podgląd pliku" allow="fullscreen"></iframe></div>
 <div class="menu" id="menu"><div data-a="open">Otwórz</div><div data-a="dl">Pobierz</div></div>
 
 <script>
-const API_KEY = "AIzaSyBjhhZtOtGrmu_gbs2p8lGFZcvh1AAFwuk";      
-const ROOT_ID = "1U7Zet_xN5CCb3clnqbxDwHfatoujMlIj";    
+// ====== USTAWIENIA ======
+const API_KEY = "AIzaSyBjhhZtOtGrmu_gbs2p8lGFZcvh1AAFwuk";      // klucz Google Drive API
+const ROOT_ID = "1U7Zet_xN5CCb3clnqbxDwHfatoujMlIj";     // ID folderu "limbo" z linku do Dysku
 const ROOT_NAME = "Mibombo";
+// ========================
 
 const $ = id => document.getElementById(id);
-const cache = {}, tree = {};            
+const cache = {}, tree = {};            // cache[id] = items; tree[id] = {name,parent,open}
 let cur = ROOT_ID, hist = [], sortK = "name", sortD = 1, sel = null, allIndex = null;
 tree[ROOT_ID] = {name: ROOT_NAME, parent: null, open: true};
 
@@ -82,7 +108,11 @@ async function fetchFolder(id) {
       "&q=" + encodeURIComponent(`'${id}' in parents and trashed=false`) +
       "&fields=" + encodeURIComponent("nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink)") +
       (tok ? "&pageToken=" + tok : "");
-    const r = await fetch(u);
+    const ac = new AbortController(), to = setTimeout(() => ac.abort(), 20000);
+    let r;
+    try { r = await fetch(u, {signal: ac.signal}); }
+    catch (_) { throw new Error("Nie udało się połączyć z Dyskiem Google. Sprawdź internet i spróbuj ponownie."); }
+    finally { clearTimeout(to); }
     if (!r.ok) throw new Error("Błąd Dysku Google (" + r.status + "). Sprawdź klucz API i czy folder jest udostępniony.");
     const j = await r.json();
     items = items.concat(j.files || []); tok = j.nextPageToken;
@@ -126,7 +156,7 @@ function renderList(items, label) {
   sel = null;
   list.innerHTML = s.length ? s.map(f => `<div class="row" data-id="${f.id}" data-f="${f.folder?1:0}" data-u="${esc(f.webViewLink||"")}">
     <div class="name">${ico(f)}<span title="${esc(f.name)}">${esc(f.name)}</span></div>
-    <div class="dim">${fmtDate(f.modifiedTime)}</div><div class="dim">${typeOf(f)}</div><div class="dim">${f.folder ? "" : fmtSize(f.size)}</div></div>`).join("")
+    <div class="dim">${fmtDate(f.modifiedTime)}</div><div class="dim">${typeOf(f)}</div><div class="dim">${f.folder ? "" : fmtSize(f.size)}</div><div>${f.folder ? "" : `<button class="dl" data-dl="1" title="Pobierz" aria-label="Pobierz"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg></button>`}</div></div>`).join("")
     : `<div class="empty">${label ? "Brak wyników." : "Ten folder jest pusty."}</div>`;
   $("status").textContent = s.length + " " + (s.length === 1 ? "element" : "elementów");
 }
@@ -161,30 +191,53 @@ $("nav").onclick = async e => {
     if (tree[id].open) { try { await fetchFolder(id); } catch (_) {} }
     return renderNav();
   }
-  tree[id].open = true; await open(id);
+  tree[id].open = true; closeNav(); await open(id);
 };
 $("crumbs").onclick = e => { const s = e.target.closest("span[data-id]"); if (s) open(s.dataset.id); };
 $("back").onclick = () => { const p = hist.pop(); if (p) open(p, false); };
 $("up").onclick = () => { const p = tree[cur]?.parent; if (p) open(p); };
 
 const list = $("list");
-list.onclick = e => { const r = e.target.closest(".row"); if (!r) return; list.querySelectorAll(".on").forEach(x => x.classList.remove("on")); r.classList.add("on"); sel = r; };
+const select = r => { list.querySelectorAll(".on").forEach(x => x.classList.remove("on")); r.classList.add("on"); sel = r; };
+list.onclick = e => {
+  const r = e.target.closest(".row"); if (!r) return;
+  if (e.target.closest(".dl")) return dl(r.dataset.id);
+  select(r);
+  if (matchMedia("(pointer:coarse)").matches) act(r, "open");   // na telefonie wystarczy jedno dotknięcie
+};
 list.ondblclick = e => { const r = e.target.closest(".row"); if (r) act(r, "open"); };
 list.oncontextmenu = e => {
-  const r = e.target.closest(".row"); if (!r) return; e.preventDefault(); r.click();
+  const r = e.target.closest(".row"); if (!r) return; e.preventDefault(); select(r);
   const m = $("menu"); m.style.display = "block"; m.style.left = Math.min(e.clientX, innerWidth - 190) + "px"; m.style.top = Math.min(e.clientY, innerHeight - 90) + "px";
   m.querySelector('[data-a="dl"]').style.display = r.dataset.f === "1" ? "none" : "";
 };
 $("menu").onclick = e => { const a = e.target.dataset.a; if (a && sel) act(sel, a); };
 document.onclick = e => { if (!e.target.closest("#menu")) $("menu").style.display = "none"; };
-document.onkeydown = e => { if (e.key === "Enter" && sel) act(sel, "open"); if (e.key === "Backspace" && e.target.tagName !== "INPUT") $("up").click(); };
+document.onkeydown = e => { if (e.key === "Escape") { closePreview(); closeNav(); } if (modal.classList.contains("show")) return; if (e.key === "Enter" && sel) act(sel, "open"); if (e.key === "Backspace" && e.target.tagName !== "INPUT") $("up").click(); };
+
+const modal = $("modal"), frame = $("frame");
+const dl = id => window.open("https://drive.google.com/uc?export=download&id=" + id, "_blank");
+function preview(id, name, link) {
+  $("mname").textContent = name;
+  $("mdl").onclick = () => dl(id);
+  $("mopen").href = link || ("https://drive.google.com/file/d/" + id + "/view");
+  $("mload").style.display = "flex";
+  frame.onload = () => { $("mload").style.display = "none"; };
+  frame.src = "https://drive.google.com/file/d/" + id + "/preview";
+  modal.classList.add("show");
+}
+function closePreview() { if (!modal.classList.contains("show")) return; modal.classList.remove("show"); frame.onload = null; frame.src = "about:blank"; }
+$("mclose").onclick = closePreview;
+const closeNav = () => { $("nav").classList.remove("show"); $("scrim").classList.remove("show"); };
+$("menubtn").onclick = () => { $("nav").classList.toggle("show"); $("scrim").classList.toggle("show"); };
+$("scrim").onclick = closeNav;
 
 function act(r, a) {
   $("menu").style.display = "none";
   const id = r.dataset.id;
-  if (a === "dl") return window.open("https://drive.google.com/uc?export=download&id=" + id, "_blank");
+  if (a === "dl") return dl(id);
   if (r.dataset.f === "1") { tree[id].open = true; return open(id); }
-  window.open(r.dataset.u || "https://drive.google.com/file/d/" + id + "/view", "_blank");
+  preview(id, r.querySelector(".name span").textContent, r.dataset.u);
 }
 
 document.querySelector(".head").onclick = e => {
