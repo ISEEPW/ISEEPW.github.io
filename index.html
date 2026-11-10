@@ -216,7 +216,13 @@ document.onclick = e => { if (!e.target.closest("#menu")) $("menu").style.displa
 document.onkeydown = e => { if (e.key === "Escape") { closePreview(); closeNav(); } if (modal.classList.contains("show")) return; if (e.key === "Enter" && sel) act(sel, "open"); if (e.key === "Backspace" && e.target.tagName !== "INPUT") $("up").click(); };
 
 const modal = $("modal"), frame = $("frame");
-const dl = id => window.open("https://drive.google.com/uc?export=download&id=" + id, "_blank");
+// bezpośrednie pobieranie (pomija stronę z ostrzeżeniem o skanowaniu wirusów, bez nowej karty)
+const dl = id => {
+  const a = document.createElement("a");
+  a.href = "https://drive.usercontent.google.com/download?id=" + encodeURIComponent(id) + "&export=download&authuser=0&confirm=t";
+  a.rel = "noopener";
+  document.body.appendChild(a); a.click(); a.remove();
+};
 function preview(id, name, link) {
   $("mname").textContent = name;
   $("mdl").onclick = () => dl(id);
