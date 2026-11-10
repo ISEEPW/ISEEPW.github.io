@@ -69,6 +69,12 @@ svg{flex-shrink:0}
 const API_KEY = "AIzaSyBjhhZtOtGrmu_gbs2p8lGFZcvh1AAFwuk";      // klucz Google Drive API
 const ROOT_ID = "1U7Zet_xN5CCb3clnqbxDwHfatoujMlIj";     // ID folderu "limbo" z linku do Dysku
 const ROOT_NAME = "Mibombo";
+// ========================
+
+const $ = id => document.getElementById(id);
+const cache = {}, tree = {};            // cache[id] = items; tree[id] = {name,parent,open}
+let cur = ROOT_ID, hist = [], sortK = "name", sortD = 1, sel = null, allIndex = null;
+tree[ROOT_ID] = {name: ROOT_NAME, parent: null, open: true};
 
 async function fetchFolder(id) {
   if (cache[id]) return cache[id];
@@ -214,9 +220,7 @@ $("q").oninput = () => {
   }, 300);
 };
 
-if (API_KEY.startsWith("AIzaSyBjhhZtOtGrmu_gbs2p8lGFZcvh1AAFwuk") || ROOT_ID.startsWith("1U7Zet_xN5CCb3clnqbxDwHfatoujMlIj")) {
-  document.querySelector(".main").innerHTML = `<div class="cfg"><h3>Wymagana konfiguracja</h3><p>Otwórz plik w edytorze i uzupełnij <code>API_KEY</code> oraz <code>ROOT_ID</code> na początku skryptu.</p></div>`;
-} else open(ROOT_ID, false);
+open(ROOT_ID, false);
 </script>
 </body>
 </html>
