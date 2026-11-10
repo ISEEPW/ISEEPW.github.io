@@ -65,14 +65,12 @@ svg{flex-shrink:0}
 <div class="menu" id="menu"><div data-a="open">Otwórz</div><div data-a="dl">Pobierz</div></div>
 
 <script>
-// ====== USTAWIENIA ======
-const API_KEY = "AIzaSyBjhhZtOtGrmu_gbs2p8lGFZcvh1AAFwuk";      // klucz Google Drive API
-const ROOT_ID = "1U7Zet_xN5CCb3clnqbxDwHfatoujMlIj";     // ID folderu "limbo" z linku do Dysku
+const API_KEY = "AIzaSyBjhhZtOtGrmu_gbs2p8lGFZcvh1AAFwuk";      
+const ROOT_ID = "1U7Zet_xN5CCb3clnqbxDwHfatoujMlIj";    
 const ROOT_NAME = "Mibombo";
-// ========================
 
 const $ = id => document.getElementById(id);
-const cache = {}, tree = {};            // cache[id] = items; tree[id] = {name,parent,open}
+const cache = {}, tree = {};            
 let cur = ROOT_ID, hist = [], sortK = "name", sortD = 1, sel = null, allIndex = null;
 tree[ROOT_ID] = {name: ROOT_NAME, parent: null, open: true};
 
