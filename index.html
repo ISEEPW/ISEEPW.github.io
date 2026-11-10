@@ -89,14 +89,12 @@ body{touch-action:manipulation}
 <div class="menu" id="menu"><div data-a="open">Otwórz</div><div data-a="dl">Pobierz</div></div>
 
 <script>
-// ====== USTAWIENIA ======
-const API_KEY = "AIzaSyBjhhZtOtGrmu_gbs2p8lGFZcvh1AAFwuk";      // klucz Google Drive API
-const ROOT_ID = "1U7Zet_xN5CCb3clnqbxDwHfatoujMlIj";     // ID folderu "limbo" z linku do Dysku
+const API_KEY = "AIzaSyBjhhZtOtGrmu_gbs2p8lGFZcvh1AAFwuk";      
+const ROOT_ID = "1U7Zet_xN5CCb3clnqbxDwHfatoujMlIj";     
 const ROOT_NAME = "Mibombo";
-// ========================
 
 const $ = id => document.getElementById(id);
-const cache = {}, tree = {};            // cache[id] = items; tree[id] = {name,parent,open}
+const cache = {}, tree = {};            
 let cur = ROOT_ID, hist = [], sortK = "name", sortD = 1, sel = null, allIndex = null;
 tree[ROOT_ID] = {name: ROOT_NAME, parent: null, open: true};
 
@@ -203,8 +201,7 @@ list.onclick = e => {
   const r = e.target.closest(".row"); if (!r) return;
   if (e.target.closest(".dl")) return dl(r.dataset.id);
   select(r);
-  if (matchMedia("(pointer:coarse)").matches) act(r, "open");   // na telefonie wystarczy jedno dotknięcie
-};
+  if (matchMedia("(pointer:coarse)").matches) act(r, "open");   
 list.ondblclick = e => { const r = e.target.closest(".row"); if (r) act(r, "open"); };
 list.oncontextmenu = e => {
   const r = e.target.closest(".row"); if (!r) return; e.preventDefault(); select(r);
@@ -216,7 +213,6 @@ document.onclick = e => { if (!e.target.closest("#menu")) $("menu").style.displa
 document.onkeydown = e => { if (e.key === "Escape") { closePreview(); closeNav(); } if (modal.classList.contains("show")) return; if (e.key === "Enter" && sel) act(sel, "open"); if (e.key === "Backspace" && e.target.tagName !== "INPUT") $("up").click(); };
 
 const modal = $("modal"), frame = $("frame");
-// bezpośrednie pobieranie (pomija stronę z ostrzeżeniem o skanowaniu wirusów, bez nowej karty)
 const dl = id => {
   const a = document.createElement("a");
   a.href = "https://drive.usercontent.google.com/download?id=" + encodeURIComponent(id) + "&export=download&authuser=0&confirm=t";
@@ -253,7 +249,6 @@ document.querySelector(".head").onclick = e => {
   renderList(q ? searchHits(q) : cache[cur] || [], q);
 };
 
-// wyszukiwanie w całym dysku (jednorazowo przeszukuje wszystkie foldery)
 async function buildIndex() {
   if (allIndex) return allIndex;
   allIndex = []; const stack = [ROOT_ID];
