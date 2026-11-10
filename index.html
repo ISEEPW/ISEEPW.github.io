@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mibombo</title>
+<style>
+:root{--bg:#202020;--panel:#2b2b2b;--hover:#383838;--sel:#3d3d3d;--line:#3a3a3a;--text:#fff;--dim:#a0a0a0;--accent:#60cdff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--text);font:14px/1.3 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+.title{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel)}
+.title b{font-weight:600}
+.bar{display:flex;gap:8px;padding:8px 12px;background:var(--bg);align-items:center}
+.btn{background:none;border:0;color:var(--text);width:32px;height:32px;border-radius:4px;font-size:16px;cursor:pointer}
+.btn:hover:not(:disabled){background:var(--hover)}.btn:disabled{color:#666;cursor:default}
+.crumbs{flex:1;display:flex;align-items:center;gap:2px;background:var(--panel);border:1px solid var(--line);border-bottom-color:#555;border-radius:4px;padding:0 6px;height:32px;overflow:auto;white-space:nowrap}
+.crumbs span{padding:3px 6px;border-radius:4px;cursor:pointer}.crumbs span:hover{background:var(--hover)}
+.crumbs i{color:var(--dim);font-style:normal}
+.search{width:240px;height:32px;background:var(--panel);border:1px solid var(--line);border-bottom-color:#555;border-radius:4px;color:var(--text);padding:0 10px;font:inherit}
+.search:focus{outline:0;border-bottom-color:var(--accent)}
+.main{flex:1;display:flex;min-height:0}
+.nav{width:260px;background:var(--bg);overflow:auto;padding:4px 6px;flex-shrink:0}
+.node{display:flex;align-items:center;gap:6px;height:32px;padding-right:8px;border-radius:4px;cursor:pointer;position:relative;white-space:nowrap}
+.node:hover{background:var(--hover)}
+.node.on{background:var(--sel)}.node.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--accent)}
+.node .chev{width:16px;text-align:center;color:var(--dim);font-size:10px;transition:transform .12s}
+.node .chev.open{transform:rotate(90deg)}
+.node span.t{overflow:hidden;text-overflow:ellipsis}
+.content{flex:1;background:var(--panel);border-radius:8px 0 0 0;border:1px solid var(--line);border-right:0;border-bottom:0;display:flex;flex-direction:column;min-width:0}
+.head,.row{display:grid;grid-template-columns:minmax(160px,1fr) 150px 110px 90px;align-items:center;padding:0 16px;gap:8px}
+.head{height:34px;color:var(--dim);border-bottom:1px solid var(--line);font-size:13px}
+.head div{cursor:pointer;padding:6px 4px;border-radius:4px}.head div:hover{background:var(--hover)}
+.list{flex:1;overflow:auto;padding:4px 8px}
+.row{height:36px;border-radius:4px;cursor:default;user-select:none;margin:1px 0}
+.row:hover{background:var(--hover)}.row.on{background:var(--sel)}
+.name{display:flex;align-items:center;gap:10px;overflow:hidden}
+.name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dim{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.status{height:26px;display:flex;align-items:center;padding:0 16px;color:var(--dim);font-size:12px;border-top:1px solid var(--line)}
+.empty{padding:40px;text-align:center;color:var(--dim)}
+.menu{position:fixed;background:#2c2c2c;border:1px solid #454545;border-radius:8px;padding:4px;box-shadow:0 8px 24px #0008;z-index:9;display:none;min-width:170px}
+.menu div{padding:7px 12px;border-radius:4px;cursor:pointer}.menu div:hover{background:var(--hover)}
+.cfg{max-width:520px;margin:60px auto;padding:20px;background:var(--panel);border-radius:8px}
+svg{flex-shrink:0}
+@media(max-width:760px){.nav{display:none}.head,.row{grid-template-columns:1fr 80px}.head :nth-child(2),.head :nth-child(3),.row :nth-child(2),.row :nth-child(3){display:none}.search{width:120px}}
+</style>
+</head>
+<body>
+<div class="title"><svg width="18" height="18" viewBox="0 0 24 24"><path fill="#f7c948" d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2z"/></svg><b id="ttl">Mibombo</b><span style="color:var(--dim)">Hosting plików Informatyki Stosowanej</span></div>
+<div class="bar">
+  <button class="btn" id="back" title="Wstecz" disabled>←</button>
+  <button class="btn" id="up" title="W górę" disabled>↑</button>
+  <div class="crumbs" id="crumbs"></div>
+  <input class="search" id="q" placeholder="Szukaj na dysku">
+</div>
+<div class="main">
+  <div class="nav" id="nav"></div>
+  <div class="content">
+    <div class="head"><div data-k="name">Nazwa</div><div data-k="date">Data modyfikacji</div><div data-k="type">Typ</div><div data-k="size">Rozmiar</div></div>
+    <div class="list" id="list"></div>
+    <div class="status" id="status"></div>
+  </div>
+</div>
+<div class="menu" id="menu"><div data-a="open">Otwórz</div><div data-a="dl">Pobierz</div></div>
+
+<script>
+// ====== USTAWIENIA ======
+const API_KEY = "WKLEJ_KLUCZ_API";      // klucz Google Drive API
+const ROOT_ID = "WKLEJ_ID_FOLDERU";     // ID folderu "limbo" z linku do Dysku
+const ROOT_NAME = "Mibombo";
+
+async function fetchFolder(id) {
+  if (cache[id]) return cache[id];
+  let items = [], tok = "";
+  do {
+    const u = "https://www.googleapis.com/drive/v3/files?pageSize=1000&key=" + API_KEY +
+      "&q=" + encodeURIComponent(`'${id}' in parents and trashed=false`) +
+      "&fields=" + encodeURIComponent("nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink)") +
+      (tok ? "&pageToken=" + tok : "");
+    const r = await fetch(u);
+    if (!r.ok) throw new Error("Błąd Dysku Google (" + r.status + "). Sprawdź klucz API i czy folder jest udostępniony.");
+    const j = await r.json();
+    items = items.concat(j.files || []); tok = j.nextPageToken;
+  } while (tok);
+  items.forEach(f => { f.folder = f.mimeType === "application/vnd.google-apps.folder"; if (f.folder) tree[f.id] = tree[f.id] || {name: f.name, parent: id, open: false}; });
+  return cache[id] = items;
+}
+
+const ico = (f) => {
+  if (f.folder) return `<svg width="22" height="22" viewBox="0 0 24 24"><path fill="#e3b341" d="M2 6a2 2 0 012-2h5l2 2h9a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2z"/><path fill="#f7c948" d="M2 9h20v9a2 2 0 01-2 2H4a2 2 0 01-2-2z"/></svg>`;
+  const e = ext(f.name), c = {pdf:"#e5534b",doc:"#4a90e2",docx:"#4a90e2",xls:"#3fb950",xlsx:"#3fb950",ppt:"#e8833a",pptx:"#e8833a",zip:"#c9a227",rar:"#c9a227","7z":"#c9a227",png:"#a371f7",jpg:"#a371f7",jpeg:"#a371f7",py:"#58a6ff",c:"#58a6ff",cpp:"#58a6ff",java:"#58a6ff",txt:"#9aa0a6"}[e] || "#9aa0a6";
+  return `<svg width="22" height="22" viewBox="0 0 24 24"><path fill="${c}" d="M6 2h8l6 6v12a2 2 0 01-2 2H6a2 2 0 01-2-2V4a2 2 0 012-2z" opacity=".9"/><path fill="#fff" opacity=".35" d="M14 2l6 6h-4a2 2 0 01-2-2z"/></svg>`;
+};
+const ext = n => (n.includes(".") ? n.split(".").pop().toLowerCase() : "");
+const typeOf = f => f.folder ? "Folder plików" : (ext(f.name) ? ext(f.name).toUpperCase() + " plik" : "Plik");
+const fmtSize = n => { n = +n; if (!n) return ""; const u = ["B","KB","MB","GB"]; let i = Math.min(3, Math.floor(Math.log(n)/Math.log(1024))); return (n/1024**i).toFixed(i?1:0) + " " + u[i]; };
+const fmtDate = s => s ? new Date(s).toLocaleString("pl-PL", {year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit"}) : "";
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function sorted(items) {
+  return [...items].sort((a, b) => {
+    if (a.folder !== b.folder) return a.folder ? -1 : 1;
+    let x, y;
+    if (sortK === "name") return sortD * a.name.localeCompare(b.name, "pl", {numeric: true});
+    if (sortK === "date") { x = a.modifiedTime || ""; y = b.modifiedTime || ""; }
+    else if (sortK === "size") { x = +a.size || 0; y = +b.size || 0; }
+    else { x = typeOf(a); y = typeOf(b); }
+    return sortD * (x < y ? -1 : x > y ? 1 : 0);
+  });
+}
+
+function path(id) { const p = []; while (id) { p.unshift(id); id = tree[id]?.parent; } return p; }
+
+function renderCrumbs(label) {
+  $("crumbs").innerHTML = path(cur).map(id => `<span data-id="${id}">${esc(tree[id].name)}</span>`).join("<i>›</i>") + (label ? `<i>›</i><span>${esc(label)}</span>` : "");
+  $("up").disabled = !tree[cur]?.parent;
+}
+
+function renderList(items, label) {
+  const list = $("list"), s = sorted(items);
+  sel = null;
+  list.innerHTML = s.length ? s.map(f => `<div class="row" data-id="${f.id}" data-f="${f.folder?1:0}" data-u="${esc(f.webViewLink||"")}">
+    <div class="name">${ico(f)}<span title="${esc(f.name)}">${esc(f.name)}</span></div>
+    <div class="dim">${fmtDate(f.modifiedTime)}</div><div class="dim">${typeOf(f)}</div><div class="dim">${f.folder ? "" : fmtSize(f.size)}</div></div>`).join("")
+    : `<div class="empty">${label ? "Brak wyników." : "Ten folder jest pusty."}</div>`;
+  $("status").textContent = s.length + " " + (s.length === 1 ? "element" : "elementów");
+}
+
+async function open(id, push = true) {
+  if (push && id !== cur) hist.push(cur);
+  cur = id; $("q").value = "";
+  $("back").disabled = !hist.length;
+  $("list").innerHTML = `<div class="empty">Ładowanie…</div>`;
+  renderCrumbs(); renderNav();
+  try { renderList(await fetchFolder(id)); renderNav(); }
+  catch (e) { $("list").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+function renderNav() {
+  const out = [];
+  const walk = (id, d) => {
+    const t = tree[id], kids = (cache[id] || []).filter(f => f.folder).sort((a, b) => a.name.localeCompare(b.name, "pl", {numeric: true}));
+    const hasKids = !cache[id] || kids.length;
+    out.push(`<div class="node ${id === cur ? "on" : ""}" data-id="${id}" style="padding-left:${d*16+4}px"><span class="chev ${t.open ? "open" : ""}" data-chev="1">${hasKids ? "▶" : ""}</span>${ico({folder: true})}<span class="t">${esc(t.name)}</span></div>`);
+    if (t.open) kids.forEach(k => walk(k.id, d + 1));
+  };
+  walk(ROOT_ID, 0);
+  $("nav").innerHTML = out.join("");
+}
+
+$("nav").onclick = async e => {
+  const n = e.target.closest(".node"); if (!n) return;
+  const id = n.dataset.id;
+  if (e.target.dataset.chev) {
+    tree[id].open = !tree[id].open;
+    if (tree[id].open) { try { await fetchFolder(id); } catch (_) {} }
+    return renderNav();
+  }
+  tree[id].open = true; await open(id);
+};
+$("crumbs").onclick = e => { const s = e.target.closest("span[data-id]"); if (s) open(s.dataset.id); };
+$("back").onclick = () => { const p = hist.pop(); if (p) open(p, false); };
+$("up").onclick = () => { const p = tree[cur]?.parent; if (p) open(p); };
+
+const list = $("list");
+list.onclick = e => { const r = e.target.closest(".row"); if (!r) return; list.querySelectorAll(".on").forEach(x => x.classList.remove("on")); r.classList.add("on"); sel = r; };
+list.ondblclick = e => { const r = e.target.closest(".row"); if (r) act(r, "open"); };
+list.oncontextmenu = e => {
+  const r = e.target.closest(".row"); if (!r) return; e.preventDefault(); r.click();
+  const m = $("menu"); m.style.display = "block"; m.style.left = Math.min(e.clientX, innerWidth - 190) + "px"; m.style.top = Math.min(e.clientY, innerHeight - 90) + "px";
+  m.querySelector('[data-a="dl"]').style.display = r.dataset.f === "1" ? "none" : "";
+};
+$("menu").onclick = e => { const a = e.target.dataset.a; if (a && sel) act(sel, a); };
+document.onclick = e => { if (!e.target.closest("#menu")) $("menu").style.display = "none"; };
+document.onkeydown = e => { if (e.key === "Enter" && sel) act(sel, "open"); if (e.key === "Backspace" && e.target.tagName !== "INPUT") $("up").click(); };
+
+function act(r, a) {
+  $("menu").style.display = "none";
+  const id = r.dataset.id;
+  if (a === "dl") return window.open("https://drive.google.com/uc?export=download&id=" + id, "_blank");
+  if (r.dataset.f === "1") { tree[id].open = true; return open(id); }
+  window.open(r.dataset.u || "https://drive.google.com/file/d/" + id + "/view", "_blank");
+}
+
+document.querySelector(".head").onclick = e => {
+  const k = e.target.dataset.k; if (!k) return;
+  sortD = sortK === k ? -sortD : 1; sortK = k;
+  const q = $("q").value.trim();
+  renderList(q ? searchHits(q) : cache[cur] || [], q);
+};
+
+// wyszukiwanie w całym dysku (jednorazowo przeszukuje wszystkie foldery)
+async function buildIndex() {
+  if (allIndex) return allIndex;
+  allIndex = []; const stack = [ROOT_ID];
+  while (stack.length) {
+    const batch = stack.splice(0, 6);
+    const res = await Promise.all(batch.map(fetchFolder));
+    res.forEach((items, i) => items.forEach(f => { f.parentId = batch[i]; allIndex.push(f); if (f.folder) stack.push(f.id); }));
+    $("status").textContent = "Indeksowanie dysku… " + allIndex.length + " elementów";
+  }
+  return allIndex;
+}
+const searchHits = q => allIndex.filter(f => f.name.toLowerCase().includes(q.toLowerCase()));
+let timer;
+$("q").oninput = () => {
+  clearTimeout(timer);
+  timer = setTimeout(async () => {
+    const q = $("q").value.trim();
+    if (!q) return open(cur, false);
+    renderCrumbs("Wyniki wyszukiwania: " + q);
+    try { await buildIndex(); renderList(searchHits(q), q); } catch (e) { $("list").innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  }, 300);
+};
+
+if (API_KEY.startsWith("WKLEJ") || ROOT_ID.startsWith("WKLEJ")) {
+  document.querySelector(".main").innerHTML = `<div class="cfg"><h3>Wymagana konfiguracja</h3><p>Otwórz plik w edytorze i uzupełnij <code>API_KEY</code> oraz <code>ROOT_ID</code> na początku skryptu.</p></div>`;
+} else open(ROOT_ID, false);
+</script>
+</body>
+</html>
