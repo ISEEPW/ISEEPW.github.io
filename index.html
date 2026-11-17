@@ -98,16 +98,16 @@ body{touch-action:manipulation}
 <div class="menu" id="menu"><div data-a="open">Otwórz</div><div data-a="dl">Pobierz</div></div>
 
 <script>
-// ====== USTAWIENIA ======
-const API_KEY = "AIzaSyAB_Zyna2UBogetLKkrsFqhDCTRSGkzMcA";      // klucz Google Drive API
-const ROOT_ID = "1RYuCLU0umV6jL27eEiKWzI_7GJgTrTqW";     // ID folderu "limbo" z linku do Dysku
+
+const API_KEY = "AIzaSyAB_Zyna2UBogetLKkrsFqhDCTRSGkzMcA";      
+const ROOT_ID = "1RYuCLU0umV6jL27eEiKWzI_7GJgTrTqW";     
 const ROOT_NAME = "Mibombo";
-// ========================
+
 
 const $ = id => document.getElementById(id);
-const cache = {}, tree = {};            // cache[id] = items; tree[id] = {name,parent,open}
+const cache = {}, tree = {};            
 let cur = ROOT_ID, hist = [], sortK = "name", sortD = 1, sel = null, allIndex = null;
-const picked = new Map();               // zaznaczone pliki: id -> nazwa
+const picked = new Map();               
 let lastRow = null, busy = false;
 tree[ROOT_ID] = {name: ROOT_NAME, parent: null, open: true};
 
@@ -211,10 +211,10 @@ $("crumbs").onclick = e => { const s = e.target.closest("span[data-id]"); if (s)
 $("back").onclick = () => { const p = hist.pop(); if (p) open(p, false); };
 $("up").onclick = () => { const p = tree[cur]?.parent; if (p) open(p); };
 
-// ====== ZAZNACZANIE GRUPOWE ======
+
 const list = $("list");
 const rowsEl = () => [...list.querySelectorAll(".row")];
-const fileRows = () => rowsEl();   // zaznaczalne są i pliki, i foldery
+const fileRows = () => rowsEl();   
 function setPick(r, on) {
   const id = r.dataset.id;
   on ? picked.set(id, {name: r.querySelector(".name span").textContent, folder: r.dataset.f === "1"}) : picked.delete(id);
@@ -232,7 +232,7 @@ function updBulk() {
 function pickAll(on) { fileRows().forEach(r => setPick(r, on)); updBulk(); }
 $("all").onchange = e => pickAll(e.target.checked);
 $("bclear").onclick = () => { picked.clear(); rowsEl().forEach(r => { r.classList.remove("pk"); const c = r.querySelector(".chk"); if (c) c.checked = false; }); updBulk(); };
-// ---- pakowanie do ZIP (bez kompresji, w przeglądarce) ----
+
 const crcT = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 const crc32 = u => { let c = -1; for (let i = 0; i < u.length; i++) c = crcT[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ -1) >>> 0; };
 function makeZip(files) {
@@ -257,7 +257,7 @@ async function getBytes(id) {
   if (!r.ok) throw new Error("Błąd pobierania pliku (" + r.status + ")");
   return new Uint8Array(await r.arrayBuffer());
 }
-// zbiera rekurencyjnie pliki z folderu (pliki natywne Google, np. Dokumenty, są pomijane)
+
 async function collectFiles(id, prefix, out) {
   for (const f of await fetchFolder(id)) {
     const n = f.name.replace(/[\\/]/g, "_");
@@ -300,7 +300,7 @@ $("bdl").onclick = async () => {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   } catch (e) {
-    // awaryjnie: pobieranie pojedynczo
+    
     if (confirm("Nie udało się utworzyć archiwum ZIP (" + e.message + "). Pobrać pliki pojedynczo?")) {
       for (let i = 0; i < entries.length; i++) {
         $("bcount").textContent = `Pobieranie ${i + 1} / ${entries.length}…`;
@@ -316,16 +316,16 @@ list.onclick = e => {
   const r = e.target.closest(".row"); if (!r) return;
   if (e.target.closest(".dl")) return dl(r.dataset.id);
   if (e.target.classList.contains("chk")) { setPick(r, e.target.checked); lastRow = r; return updBulk(); }
-  if (e.shiftKey && lastRow && lastRow.isConnected) {          // Shift + klik = zakres
+  if (e.shiftKey && lastRow && lastRow.isConnected) {          
     const rs = rowsEl(), a = rs.indexOf(lastRow), b = rs.indexOf(r);
     rs.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => setPick(x, true));
     select(r); return updBulk();
   }
-  if (e.ctrlKey || e.metaKey) {                                // Ctrl/Cmd + klik = przełącz
+  if (e.ctrlKey || e.metaKey) {                                
     setPick(r, !picked.has(r.dataset.id)); lastRow = r; select(r); return updBulk();
   }
   select(r);
-  if (matchMedia("(pointer:coarse)").matches) act(r, "open");   // na telefonie wystarczy jedno dotknięcie
+  if (matchMedia("(pointer:coarse)").matches) act(r, "open");   
 };
 list.ondblclick = e => { if (e.target.classList.contains("chk")) return; const r = e.target.closest(".row"); if (r) act(r, "open"); };
 list.oncontextmenu = e => {
@@ -346,7 +346,7 @@ document.onkeydown = e => {
 };
 
 const modal = $("modal"), frame = $("frame");
-// bezpośrednie pobieranie (pomija stronę z ostrzeżeniem o skanowaniu wirusów, bez nowej karty)
+
 const dl = id => {
   const a = document.createElement("a");
   a.href = "https://drive.usercontent.google.com/download?id=" + encodeURIComponent(id) + "&export=download&authuser=0&confirm=t";
@@ -383,7 +383,7 @@ document.querySelector(".head").onclick = e => {
   renderList(q ? searchHits(q) : cache[cur] || [], q);
 };
 
-// wyszukiwanie w całym dysku (jednorazowo przeszukuje wszystkie foldery)
+
 async function buildIndex() {
   if (allIndex) return allIndex;
   allIndex = []; const stack = [ROOT_ID];
