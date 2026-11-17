@@ -1,6 +1,6 @@
 # 📂 Mibombo
 
-> **Hosting plików Informatyki Stosowanej** 🚀
+> **Hosting plików z dysku Informatyki Stosowanej** 🚀
 
 <pre align="center">
   __  __ _ _                 _          
@@ -26,7 +26,7 @@
 
 ## ✨ Kluczowe funkcje
 
-* 🌳 **Interaktifne drzewo katalogów** – płynna nawigacja po strukturze folderów z bocznego panelu.
+* 🌳 **Interaktywne drzewo katalogów** – płynna nawigacja po strukturze folderów z bocznego panelu.
 * 📦 **Inteligentne pobieranie paczek ZIP** – pobieraj pojedyncze pliki lub całe foldery spakowane w locie dzięki wbudowanemu algorytmowi ZIP i CRC32.
 * 🔍 **Wyszukiwarka w czasie rzeczywistym** – błyskawiczne indeksowanie i przeszukiwanie całej zawartości dysku.
 * 👁️ **Wbudowany podgląd plików** – przeglądaj dokumenty, PDF-y i multimedia bez opuszczania strony (w oknie modalnym).
