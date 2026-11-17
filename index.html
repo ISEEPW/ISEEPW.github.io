@@ -29,15 +29,20 @@ body{background:var(--bg);color:var(--text);font:14px/1.3 "Segoe UI Variable","S
 .node .chev.open{transform:rotate(90deg)}
 .node span.t{overflow:hidden;text-overflow:ellipsis}
 .content{flex:1;background:var(--panel);border-radius:8px 0 0 0;border:1px solid var(--line);border-right:0;border-bottom:0;display:flex;flex-direction:column;min-width:0}
-.head,.row{display:grid;grid-template-columns:minmax(160px,1fr) 150px 110px 90px 40px;align-items:center;padding:0 16px;gap:8px}
+.head,.row{display:grid;grid-template-columns:24px minmax(160px,1fr) 150px 110px 90px 40px;align-items:center;padding:0 16px;gap:8px}
 .head{height:34px;color:var(--dim);border-bottom:1px solid var(--line);font-size:13px}
-.head div{cursor:pointer;padding:6px 4px;border-radius:4px}.head div:hover{background:var(--hover)}
+.head div[data-k]{cursor:pointer;padding:6px 4px;border-radius:4px}.head div[data-k]:hover{background:var(--hover)}
 .list{flex:1;overflow:auto;padding:4px 8px}
 .row{height:36px;border-radius:4px;cursor:default;user-select:none;margin:1px 0}
 .row:hover{background:var(--hover)}.row.on{background:var(--sel)}
+.row.pk{background:#2f4352}.row.pk:hover{background:#365066}
+.chk{width:16px;height:16px;margin:0;accent-color:var(--accent);cursor:pointer}
+.row .chk{opacity:0}.row:hover .chk,.row.pk .chk,.list.multi .chk{opacity:1}
 .name{display:flex;align-items:center;gap:10px;overflow:hidden}
 .name span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dim{color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bulk{display:none;align-items:center;gap:8px;padding:6px 16px;background:#243746;border-bottom:1px solid var(--line)}
+.bulk .cnt{flex:1}
 .status{height:26px;display:flex;align-items:center;padding:0 16px;color:var(--dim);font-size:12px;border-top:1px solid var(--line)}
 .empty{padding:40px;text-align:center;color:var(--dim)}
 .menu{position:fixed;background:#2c2c2c;border:1px solid #454545;border-radius:8px;padding:4px;box-shadow:0 8px 24px #0008;z-index:9;display:none;min-width:170px}
@@ -52,7 +57,8 @@ svg{flex-shrink:0}
 .mhead{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel);border-bottom:1px solid var(--line)}
 .mname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .mbtn{background:var(--hover);color:var(--text);border:0;border-radius:4px;padding:7px 12px;font:inherit;cursor:pointer;text-decoration:none;white-space:nowrap}
-.mbtn:hover{background:#4a4a4a}
+.mbtn:hover:not(:disabled){background:#4a4a4a}.mbtn:disabled{opacity:.5;cursor:default}
+.mbtn.pri{background:var(--accent);color:#000}.mbtn.pri:hover:not(:disabled){background:#7fd7ff}
 .mframe{flex:1;border:0;width:100%;background:#fff}
 .mload{position:absolute;left:0;right:0;top:50px;bottom:0;display:flex;align-items:center;justify-content:center;color:var(--dim);pointer-events:none}
 body{touch-action:manipulation}
@@ -61,8 +67,9 @@ body{touch-action:manipulation}
 .nav{position:fixed;left:0;top:0;bottom:0;z-index:20;width:82%;max-width:320px;background:var(--panel);transform:translateX(-100%);transition:transform .18s;padding-top:12px;box-shadow:0 0 30px #000a}
 .nav.show{transform:none}
 .title span{display:none}
-.head,.row{grid-template-columns:1fr 70px 40px}
-.head>:nth-child(2),.head>:nth-child(3),.row>:nth-child(2),.row>:nth-child(3){display:none}
+.head,.row{grid-template-columns:24px 1fr 70px 40px}
+.head>:nth-child(3),.head>:nth-child(4),.row>:nth-child(3),.row>:nth-child(4){display:none}
+.row .chk{opacity:1}
 .search{width:110px}
 .mbtn.hide-m{display:none}
 }
@@ -80,7 +87,8 @@ body{touch-action:manipulation}
 <div class="main">
   <div class="nav" id="nav"></div>
   <div class="content">
-    <div class="head"><div data-k="name">Nazwa</div><div data-k="date">Data modyfikacji</div><div data-k="type">Typ</div><div data-k="size">Rozmiar</div><div></div></div>
+    <div class="head"><div><input type="checkbox" class="chk" id="all" title="Zaznacz wszystkie pliki" aria-label="Zaznacz wszystkie pliki" style="opacity:1"></div><div data-k="name">Nazwa</div><div data-k="date">Data modyfikacji</div><div data-k="type">Typ</div><div data-k="size">Rozmiar</div><div></div></div>
+    <div class="bulk" id="bulk"><span class="cnt" id="bcount"></span><button class="mbtn pri" id="bdl">Pobierz zaznaczone</button><button class="mbtn" id="bclear">Odznacz</button></div>
     <div class="list" id="list"></div>
     <div class="status" id="status"></div>
   </div>
@@ -99,6 +107,8 @@ const ROOT_NAME = "Mibombo";
 const $ = id => document.getElementById(id);
 const cache = {}, tree = {};            // cache[id] = items; tree[id] = {name,parent,open}
 let cur = ROOT_ID, hist = [], sortK = "name", sortD = 1, sel = null, allIndex = null;
+const picked = new Map();               // zaznaczone pliki: id -> nazwa
+let lastRow = null, busy = false;
 tree[ROOT_ID] = {name: ROOT_NAME, parent: null, open: true};
 
 async function fetchFolder(id) {
@@ -154,17 +164,20 @@ function renderCrumbs(label) {
 
 function renderList(items, label) {
   const list = $("list"), s = sorted(items);
-  sel = null;
-  list.innerHTML = s.length ? s.map(f => `<div class="row" data-id="${f.id}" data-f="${f.folder?1:0}" data-u="${esc(f.webViewLink||"")}">
+  sel = null; lastRow = null;
+  list.innerHTML = s.length ? s.map(f => `<div class="row${picked.has(f.id) ? " pk" : ""}" data-id="${f.id}" data-f="${f.folder?1:0}" data-u="${esc(f.webViewLink||"")}">
+    <div>${f.folder ? "" : `<input type="checkbox" class="chk" aria-label="Zaznacz" ${picked.has(f.id) ? "checked" : ""}>`}</div>
     <div class="name">${ico(f)}<span title="${esc(f.name)}">${esc(f.name)}</span></div>
     <div class="dim">${fmtDate(f.modifiedTime)}</div><div class="dim">${typeOf(f)}</div><div class="dim">${f.folder ? "" : fmtSize(f.size)}</div><div>${f.folder ? "" : `<button class="dl" data-dl="1" title="Pobierz" aria-label="Pobierz"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11m0 0l-4-4m4 4l4-4M5 20h14"/></svg></button>`}</div></div>`).join("")
     : `<div class="empty">${label ? "Brak wyników." : "Ten folder jest pusty."}</div>`;
   $("status").textContent = s.length + " " + (s.length === 1 ? "element" : "elementów");
+  updBulk();
 }
 
 async function open(id, push = true) {
   if (push && id !== cur) hist.push(cur);
   cur = id; $("q").value = "";
+  picked.clear(); updBulk();
   $("back").disabled = !hist.length;
   $("list").innerHTML = `<div class="empty">Ładowanie…</div>`;
   renderCrumbs(); renderNav();
@@ -198,15 +211,57 @@ $("crumbs").onclick = e => { const s = e.target.closest("span[data-id]"); if (s)
 $("back").onclick = () => { const p = hist.pop(); if (p) open(p, false); };
 $("up").onclick = () => { const p = tree[cur]?.parent; if (p) open(p); };
 
+// ====== ZAZNACZANIE GRUPOWE ======
 const list = $("list");
+const rowsEl = () => [...list.querySelectorAll(".row")];
+const fileRows = () => rowsEl().filter(r => r.dataset.f === "0");
+function setPick(r, on) {
+  if (r.dataset.f === "1") return;
+  const id = r.dataset.id;
+  on ? picked.set(id, r.querySelector(".name span").textContent) : picked.delete(id);
+  r.classList.toggle("pk", on);
+  const c = r.querySelector(".chk"); if (c) c.checked = on;
+}
+function updBulk() {
+  const n = picked.size, a = $("all"), fr = fileRows(), k = fr.filter(r => picked.has(r.dataset.id)).length;
+  $("bulk").style.display = n ? "flex" : "none";
+  if (!busy) $("bcount").textContent = "Zaznaczono: " + n;
+  list.classList.toggle("multi", n > 0);
+  a.checked = fr.length > 0 && k === fr.length;
+  a.indeterminate = k > 0 && k < fr.length;
+}
+function pickAll(on) { fileRows().forEach(r => setPick(r, on)); updBulk(); }
+$("all").onchange = e => pickAll(e.target.checked);
+$("bclear").onclick = () => { picked.clear(); rowsEl().forEach(r => { r.classList.remove("pk"); const c = r.querySelector(".chk"); if (c) c.checked = false; }); updBulk(); };
+$("bdl").onclick = async () => {
+  if (busy || !picked.size) return;
+  const ids = [...picked.keys()];
+  busy = true; $("bdl").disabled = true;
+  for (let i = 0; i < ids.length; i++) {
+    $("bcount").textContent = `Pobieranie ${i + 1} / ${ids.length}…`;
+    dl(ids[i]);
+    await new Promise(r => setTimeout(r, 800));   // odstęp, żeby przeglądarka nie zablokowała kolejnych pobrań
+  }
+  busy = false; $("bdl").disabled = false; updBulk();
+};
+
 const select = r => { list.querySelectorAll(".on").forEach(x => x.classList.remove("on")); r.classList.add("on"); sel = r; };
 list.onclick = e => {
   const r = e.target.closest(".row"); if (!r) return;
   if (e.target.closest(".dl")) return dl(r.dataset.id);
+  if (e.target.classList.contains("chk")) { setPick(r, e.target.checked); lastRow = r; return updBulk(); }
+  if (e.shiftKey && lastRow && lastRow.isConnected) {          // Shift + klik = zakres
+    const rs = rowsEl(), a = rs.indexOf(lastRow), b = rs.indexOf(r);
+    rs.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => setPick(x, true));
+    select(r); return updBulk();
+  }
+  if (e.ctrlKey || e.metaKey) {                                // Ctrl/Cmd + klik = przełącz
+    setPick(r, !picked.has(r.dataset.id)); lastRow = r; select(r); return updBulk();
+  }
   select(r);
   if (matchMedia("(pointer:coarse)").matches) act(r, "open");   // na telefonie wystarczy jedno dotknięcie
 };
-list.ondblclick = e => { const r = e.target.closest(".row"); if (r) act(r, "open"); };
+list.ondblclick = e => { if (e.target.classList.contains("chk")) return; const r = e.target.closest(".row"); if (r) act(r, "open"); };
 list.oncontextmenu = e => {
   const r = e.target.closest(".row"); if (!r) return; e.preventDefault(); select(r);
   const m = $("menu"); m.style.display = "block"; m.style.left = Math.min(e.clientX, innerWidth - 190) + "px"; m.style.top = Math.min(e.clientY, innerHeight - 90) + "px";
@@ -214,7 +269,15 @@ list.oncontextmenu = e => {
 };
 $("menu").onclick = e => { const a = e.target.dataset.a; if (a && sel) act(sel, a); };
 document.onclick = e => { if (!e.target.closest("#menu")) $("menu").style.display = "none"; };
-document.onkeydown = e => { if (e.key === "Escape") { closePreview(); closeNav(); } if (modal.classList.contains("show")) return; if (e.key === "Enter" && sel) act(sel, "open"); if (e.key === "Backspace" && e.target.tagName !== "INPUT") $("up").click(); };
+document.onkeydown = e => {
+  if (e.key === "Escape") { closePreview(); closeNav(); }
+  if (modal.classList.contains("show")) return;
+  const typing = e.target.tagName === "INPUT" && e.target.type !== "checkbox";
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a" && !typing) { e.preventDefault(); return pickAll(true); }
+  if (e.key === "Escape" && picked.size && !typing) $("bclear").click();
+  if (e.key === "Enter" && sel) act(sel, "open");
+  if (e.key === "Backspace" && !typing) $("up").click();
+};
 
 const modal = $("modal"), frame = $("frame");
 // bezpośrednie pobieranie (pomija stronę z ostrzeżeniem o skanowaniu wirusów, bez nowej karty)
@@ -281,6 +344,4 @@ $("q").oninput = () => {
 open(ROOT_ID, false);
 </script>
 </body>
-</html>
-
 </html>
