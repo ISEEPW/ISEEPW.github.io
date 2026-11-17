@@ -98,16 +98,14 @@ body{touch-action:manipulation}
 <div class="menu" id="menu"><div data-a="open">Otwórz</div><div data-a="dl">Pobierz</div></div>
 
 <script>
-
-const API_KEY = "AIzaSyAB_Zyna2UBogetLKkrsFqhDCTRSGkzMcA";      
-const ROOT_ID = "1RYuCLU0umV6jL27eEiKWzI_7GJgTrTqW";     
+const API_KEY = "AIzaSyAB_Zyna2UBogetLKkrsFqhDCTRSGkzMcA";
+const ROOT_ID = "1RYuCLU0umV6jL27eEiKWzI_7GJgTrTqW";
 const ROOT_NAME = "Mibombo";
 
-
 const $ = id => document.getElementById(id);
-const cache = {}, tree = {};            
-let cur = ROOT_ID, hist = [], sortK = "name", sortD = 1, sel = null, allIndex = null;
-const picked = new Map();               
+const cache = {}, tree = {};
+let cur = ROOT_ID, sortK = "name", sortD = 1, sel = null, allIndex = null;
+const picked = new Map();
 let lastRow = null, busy = false;
 tree[ROOT_ID] = {name: ROOT_NAME, parent: null, open: true};
 
@@ -175,10 +173,10 @@ function renderList(items, label) {
 }
 
 async function open(id, push = true) {
-  if (push && id !== cur) hist.push(cur);
+  if (push && id !== cur) history.pushState({id, n: (history.state?.n || 0) + 1}, "");
   cur = id; $("q").value = "";
   picked.clear(); updBulk();
-  $("back").disabled = !hist.length;
+  $("back").disabled = !(history.state && history.state.n > 0);
   $("list").innerHTML = `<div class="empty">Ładowanie…</div>`;
   renderCrumbs(); renderNav();
   try { renderList(await fetchFolder(id)); renderNav(); }
@@ -208,13 +206,12 @@ $("nav").onclick = async e => {
   tree[id].open = true; closeNav(); await open(id);
 };
 $("crumbs").onclick = e => { const s = e.target.closest("span[data-id]"); if (s) open(s.dataset.id); };
-$("back").onclick = () => { const p = hist.pop(); if (p) open(p, false); };
+$("back").onclick = () => history.back();
 $("up").onclick = () => { const p = tree[cur]?.parent; if (p) open(p); };
-
 
 const list = $("list");
 const rowsEl = () => [...list.querySelectorAll(".row")];
-const fileRows = () => rowsEl();   
+const fileRows = () => rowsEl();
 function setPick(r, on) {
   const id = r.dataset.id;
   on ? picked.set(id, {name: r.querySelector(".name span").textContent, folder: r.dataset.f === "1"}) : picked.delete(id);
@@ -300,7 +297,6 @@ $("bdl").onclick = async () => {
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(url), 60000);
   } catch (e) {
-    
     if (confirm("Nie udało się utworzyć archiwum ZIP (" + e.message + "). Pobrać pliki pojedynczo?")) {
       for (let i = 0; i < entries.length; i++) {
         $("bcount").textContent = `Pobieranie ${i + 1} / ${entries.length}…`;
@@ -316,16 +312,16 @@ list.onclick = e => {
   const r = e.target.closest(".row"); if (!r) return;
   if (e.target.closest(".dl")) return dl(r.dataset.id);
   if (e.target.classList.contains("chk")) { setPick(r, e.target.checked); lastRow = r; return updBulk(); }
-  if (e.shiftKey && lastRow && lastRow.isConnected) {          
+  if (e.shiftKey && lastRow && lastRow.isConnected) {
     const rs = rowsEl(), a = rs.indexOf(lastRow), b = rs.indexOf(r);
     rs.slice(Math.min(a, b), Math.max(a, b) + 1).forEach(x => setPick(x, true));
     select(r); return updBulk();
   }
-  if (e.ctrlKey || e.metaKey) {                                
+  if (e.ctrlKey || e.metaKey) {
     setPick(r, !picked.has(r.dataset.id)); lastRow = r; select(r); return updBulk();
   }
   select(r);
-  if (matchMedia("(pointer:coarse)").matches) act(r, "open");   
+  if (matchMedia("(pointer:coarse)").matches) act(r, "open");
 };
 list.ondblclick = e => { if (e.target.classList.contains("chk")) return; const r = e.target.closest(".row"); if (r) act(r, "open"); };
 list.oncontextmenu = e => {
@@ -361,9 +357,14 @@ function preview(id, name, link) {
   frame.onload = () => { $("mload").style.display = "none"; };
   frame.src = "https://drive.google.com/file/d/" + id + "/preview";
   modal.classList.add("show");
+  history.pushState({id: cur, n: (history.state?.n || 0) + 1, modal: true}, "");
 }
-function closePreview() { if (!modal.classList.contains("show")) return; modal.classList.remove("show"); frame.onload = null; frame.src = "about:blank"; }
-$("mclose").onclick = closePreview;
+function closePreview(fromPop) {
+  if (!modal.classList.contains("show")) return;
+  if (!fromPop && history.state?.modal) return history.back();
+  modal.classList.remove("show"); frame.onload = null; frame.src = "about:blank";
+}
+$("mclose").onclick = () => closePreview();
 const closeNav = () => { $("nav").classList.remove("show"); $("scrim").classList.remove("show"); };
 $("menubtn").onclick = () => { $("nav").classList.toggle("show"); $("scrim").classList.toggle("show"); };
 $("scrim").onclick = closeNav;
@@ -382,7 +383,6 @@ document.querySelector(".head").onclick = e => {
   const q = $("q").value.trim();
   renderList(q ? searchHits(q) : cache[cur] || [], q);
 };
-
 
 async function buildIndex() {
   if (allIndex) return allIndex;
@@ -407,6 +407,17 @@ $("q").oninput = () => {
   }, 300);
 };
 
+window.addEventListener("popstate", e => {
+  const s = e.state;
+  if (!s) return;
+  if (modal.classList.contains("show") && !s.modal) closePreview(true);
+  closeNav();
+  if (s.modal) { $("back").disabled = !(s.n > 0); return; }
+  const id = tree[s.id] ? s.id : ROOT_ID;
+  if (id !== cur || !modal.classList.contains("show")) open(id, false);
+});
+
+history.replaceState({id: ROOT_ID, n: 0}, "");
 open(ROOT_ID, false);
 </script>
 </body>
